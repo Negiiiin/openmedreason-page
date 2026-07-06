@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenMedReason: Scientific Reasoning Supervision for Medical VLMs</title>
+<meta name="description" content="OpenMedReason: a large-scale open multimodal medical reasoning corpus with source-grounded reasoning traces, and OpenMedReason-Bench, a capability-decomposed (Perception / Knowledge / Rationale) benchmark for medical VLMs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#2e8fce;        /* perception  – cerulean */
+  --p-bg:#e1f1fb;
+  --p-ink:#1a6499;
+  --k:#43a047;        /* knowledge   – green      */
+  --k-bg:#e6f4e3;
+  --k-ink:#2f7a34;
+  --r:#8b5cf6;        /* rationale   – violet     */
+  --r-bg:#efe8fe;
+  --r-ink:#6a34c9;
+  --ink:#211d33;
+  --ink-soft:#5a5570;
+  --line:#e8e4f2;
+  --bg:#ffffff;
+  --bg-soft:#f8f7fc;
+  --accent:#6a5ae0;       /* brand lavender */
+  --accent-dark:#5546c0;
+  --accent-bg:#efecfd;
+  --accent-line:#ddd5f8;
+  --code-bg:#151230;
+  --code-ink:#e3ddf5;
+  --maxw:960px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;color:var(--ink);background:var(--bg);
+  font-family:'Inter',system-ui,sans-serif;
+  font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Newsreader',Georgia,serif;font-weight:600;line-height:1.15;letter-spacing:-.01em}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:22px;height:56px}
+nav .brand{font-family:'Newsreader',serif;font-weight:600;font-size:18px;margin-right:auto;letter-spacing:-.01em}
+nav .brand b{color:var(--accent)}
+nav a.link{color:var(--ink-soft);font-size:14.5px;font-weight:500}
+nav a.link:hover{color:var(--accent);text-decoration:none}
+@media(max-width:760px){nav a.link{display:none}}
+
+/* ---------- hero ---------- */
+header.hero{padding:64px 0 40px;border-bottom:1px solid var(--line);
+  background:radial-gradient(1200px 400px at 50% -120px,var(--accent-bg),transparent)}
+.badge{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;
+  color:var(--accent);background:var(--p-bg);border:1px solid var(--accent-line);
+  padding:5px 13px;border-radius:999px;letter-spacing:.02em}
+h1.title{font-size:clamp(30px,5vw,50px);margin:20px 0 6px;letter-spacing:-.02em}
+.subtitle{font-size:clamp(17px,2.4vw,21px);color:var(--ink-soft);font-family:'Newsreader',serif;font-style:italic;margin:0 0 26px}
+.authors{font-size:15.5px;color:var(--ink);line-height:2}
+.authors sup{color:var(--accent);font-weight:600}
+.authors .me{font-weight:600}
+.affil{font-size:13.5px;color:var(--ink-soft);margin-top:10px;line-height:1.8}
+.btns{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:11px;
+  font-size:14.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);
+  transition:.15s}
+.btn:hover{text-decoration:none;transform:translateY(-1px);box-shadow:0 6px 18px rgba(106,90,224,.18);border-color:var(--accent-line)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent-dark)}
+.btn svg{width:17px;height:17px}
+
+/* ---------- stat strip ---------- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:16px;overflow:hidden;margin:36px 0 6px}
+.stat{background:#fff;padding:22px 16px;text-align:center}
+.stat .n{font-family:'Newsreader',serif;font-size:30px;font-weight:600;color:var(--accent);line-height:1}
+.stat .l{font-size:12.5px;color:var(--ink-soft);margin-top:7px;letter-spacing:.01em}
+@media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}}
+.contribs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:36px 0 6px}
+@media(max-width:680px){.contribs{grid-template-columns:1fr}}
+.contrib{border:1px solid var(--line);border-radius:16px;background:#fff;padding:18px}
+.ctag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 11px;border-radius:999px;margin-bottom:11px}
+.ctag.c-p{background:var(--p-bg);color:var(--p-ink)}
+.ctag.c-k{background:var(--k-bg);color:var(--k-ink)}
+.ctag.c-r{background:var(--r-bg);color:var(--r-ink)}
+.ct-t{font-family:'Newsreader',serif;font-weight:600;font-size:20px;color:var(--ink);line-height:1.15;margin-bottom:6px;letter-spacing:-.01em}
+.ct-d{font-size:13.5px;color:var(--ink-soft);line-height:1.5}
+
+/* ---------- sections ---------- */
+section{padding:56px 0;border-bottom:1px solid var(--line)}
+.eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+h2.sec{font-size:clamp(24px,3.4vw,33px);margin:0 0 8px;letter-spacing:-.015em}
+.lead{color:var(--ink-soft);font-size:18px;max-width:70ch;margin:0 0 8px}
+p{max-width:74ch}
+.muted{color:var(--ink-soft)}
+
+/* ---------- PKR legend chips ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
+.chip{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;
+  padding:6px 13px;border-radius:999px;border:1px solid transparent}
+.chip .dot{width:10px;height:10px;border-radius:50%}
+.chip.p{background:var(--p-bg);color:var(--p-ink);border-color:#bfe0f2}
+.chip.p .dot{background:var(--p)}
+.chip.k{background:var(--k-bg);color:var(--k-ink);border-color:#c3e6bd}
+.chip.k .dot{background:var(--k)}
+.chip.r{background:var(--r-bg);color:var(--r-ink);border-color:#ddccf9}
+.chip.r .dot{background:var(--r)}
+
+/* ---------- pipeline overview strip ---------- */
+.flow{display:flex;align-items:stretch;gap:0;margin:26px 0 8px;border:1px solid var(--line);
+  border-radius:16px;overflow:hidden;background:var(--bg-soft)}
+.flow .fstep{flex:1;padding:16px 14px;position:relative;display:flex;flex-direction:column;gap:3px;min-width:0}
+.flow .fstep:not(:last-child){border-right:1px solid var(--line)}
+.flow .fstep .fn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;margin-bottom:5px}
+.flow .fstep .ft{font-weight:700;font-size:13.5px;line-height:1.25}
+.flow .fstep .fd{font-size:11.5px;color:var(--ink-soft);line-height:1.35}
+.flow .fstep .farr{position:absolute;right:-9px;top:50%;transform:translateY(-50%);z-index:2;
+  width:18px;height:18px;background:#fff;border:1px solid var(--line);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:11px;font-weight:800}
+@media(max-width:720px){
+  .flow{flex-direction:column}
+  .flow .fstep:not(:last-child){border-right:none;border-bottom:1px solid var(--line)}
+  .flow .fstep .farr{right:50%;top:auto;bottom:-9px;transform:translateX(50%) rotate(90deg)}
+}
+
+/* ---------- pipeline (data creation) connected spine ---------- */
+.pipe{position:relative;margin:22px 0 0;padding-left:46px}
+.pipe::before{content:"";position:absolute;left:12px;top:14px;bottom:14px;width:2px;
+  background:linear-gradient(var(--p),var(--k),var(--r));border-radius:2px}
+.pstep{position:relative;margin-bottom:20px}
+.pstep:last-child{margin-bottom:0}
+.stepnum{position:absolute;left:-46px;top:12px;display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;
+  flex:none;box-shadow:0 0 0 4px #fff,0 0 0 5px var(--line)}
+.card{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden}
+.card-h{display:flex;align-items:flex-start;gap:11px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--bg-soft)}
+.card-ht{display:flex;flex-direction:column;gap:4px;margin-right:auto;min-width:0}
+.card-h .t{font-weight:700;font-size:15px;line-height:1.2}
+.card-h .hsub{font-size:12.5px;font-weight:400;color:var(--ink-soft);line-height:1.45}
+.card-h .tag{flex:none;font-size:11.5px;font-weight:600;color:var(--ink-soft);
+  background:#fff;border:1px solid var(--line);padding:3px 9px;border-radius:6px}
+.card-b{padding:18px}
+@media(max-width:520px){.pipe{padding-left:34px}.stepnum{left:-34px;width:22px;height:22px;font-size:12px}.pipe::before{left:10px}}
+
+.scan{display:grid;grid-template-columns:minmax(0,260px) 1fr;gap:22px;align-items:start}
+@media(max-width:560px){.scan{grid-template-columns:1fr}}
+.ctwrap{margin:0}
+.ctimg{width:100%;display:block;border-radius:12px;border:1px solid #000;background:#000}
+.ctwrap figcaption{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-soft);margin-top:7px;text-align:center;letter-spacing:.02em}
+.ctwrap.missing{border:1.5px dashed var(--accent-line);border-radius:12px;background:var(--accent-bg);
+  min-height:150px;display:flex;align-items:center;justify-content:center;padding:24px 16px;text-align:center}
+.ctwrap.missing .ctimg{display:none}
+.ctwrap.missing figcaption{display:none}
+.ctwrap.missing::after{content:"Add pancreas-ct.png next to index.html";
+  font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--accent-dark);line-height:1.5}
+
+.ctx{font-size:14.5px;line-height:1.75}
+.hl{border-radius:4px;padding:.5px 3px;font-weight:500}
+.hl.age{background:#fdf0c8}
+.hl.sym{background:#fde3c0}
+.hl.perc{background:var(--p-bg)}
+.hl.lab{background:#f6e0ec}
+.hl.dx{background:var(--r-bg)}
+.hl.tx{background:#ffe0cf}
+
+.tasktags{display:flex;flex-wrap:wrap;gap:8px}
+.ttag{font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid}
+.ttag.dx{background:var(--r-bg);color:var(--r-ink);border-color:#ddccf9}
+.ttag.tx{background:#ffe0cf;color:#b4531f;border-color:#f6cdb4}
+.arrowdown{display:flex;justify-content:center;color:var(--line)}
+.arrowdown svg{width:22px;height:22px}
+
+/* MCQ */
+.mcq .stem{font-size:15.5px;font-weight:500}
+.opts{display:grid;gap:8px;margin-top:14px}
+.opt{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font-size:14.5px}
+.opt .k{font-weight:700;color:var(--ink-soft);flex:none}
+.opt.correct{border-color:var(--p);background:var(--p-bg)}
+.opt.correct .k{color:var(--accent)}
+.opt.correct .badge-ok{margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:var(--p);padding:2px 8px;border-radius:6px;align-self:center}
+
+/* reasoning trace */
+.trace{font-size:14.5px;line-height:1.78}
+.trace .seg{padding:13px 15px;border-left:3px solid;border-radius:0 10px 10px 0;margin-bottom:10px;background:#fff}
+.trace .seg .lab{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.trace .seg.p{border-color:var(--p);background:var(--p-bg)}
+.trace .seg.p .lab{color:var(--p-ink)}
+.trace .seg.k{border-color:var(--k);background:var(--k-bg)}
+.trace .seg.k .lab{color:var(--k-ink)}
+.trace .seg.r{border-color:var(--r);background:var(--r-bg)}
+.trace .seg.r .lab{color:var(--r-ink)}
+
+/* ---------- three-stage curation pipeline ---------- */
+.p3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:26px 0 4px}
+@media(max-width:820px){.p3{grid-template-columns:1fr}}
+.pcol{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.pcol-h{padding:13px 15px;font-family:'Newsreader',serif;font-weight:600;font-size:16px;color:#fff;text-align:center;letter-spacing:-.01em;line-height:1.2}
+.pcol.c1 .pcol-h{background:var(--p)}
+.pcol.c2 .pcol-h{background:var(--accent)}
+.pcol.c3 .pcol-h{background:var(--r)}
+.pcol-b{padding:13px;display:flex;flex-direction:column;gap:10px;flex:1}
+.psrc{font-size:12px;font-weight:600;color:var(--ink-soft);background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;padding:9px 11px;text-align:center}
+.pst{border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.pcol.c1 .pst{background:var(--p-bg);border-color:#bfe0f2}
+.pcol.c2 .pst{background:var(--accent-bg);border-color:var(--accent-line)}
+.pcol.c3 .pst{background:var(--r-bg);border-color:#ddccf9}
+.pst .sn{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:6px;color:#fff;margin-bottom:7px}
+.pcol.c1 .sn{background:var(--p)}
+.pcol.c2 .sn{background:var(--accent)}
+.pcol.c3 .sn{background:var(--r)}
+.pst .stt{font-weight:700;font-size:13.5px;display:block;margin-bottom:7px;line-height:1.3}
+.pst p{font-size:12.5px;margin:0;color:var(--ink-soft);line-height:1.5}
+.mini{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+.mini li{font-size:11.5px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:3px 8px;color:var(--ink)}
+.mini.chk li{padding-left:7px}
+.mini.chk li::before{content:"✓ ";color:var(--p-ink);font-weight:800}
+.pcol.c2 .mini.chk li::before{color:var(--accent)}
+.pcol.c3 .mini.chk li::before{color:var(--r-ink)}
+.judge{display:flex;gap:6px;margin-top:9px}
+.judge span{font-size:11px;font-weight:700;padding:3px 10px;border-radius:7px}
+.judge .y{background:var(--p-bg);color:var(--p-ink)}
+.judge .n{background:#fbe4e4;color:#a53b3b}
+.fmt{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px;font-weight:600;margin-top:8px}
+.fmt .step{background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+.fmt .ar{color:var(--r);font-weight:800}
+.codechip{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:var(--code-bg);color:var(--code-ink);border-radius:8px;padding:8px 10px;margin-top:9px;display:block;overflow-x:auto;white-space:nowrap;border:1px solid #2a2352}
+.pdiv{height:1px;background:var(--line);margin:34px 0 4px}
+.pipefig{margin:26px 0 4px}
+.pipefig img{width:100%;display:block;border-radius:16px;border:1px solid var(--line)}
+.pipefig figcaption{font-size:12.5px;color:var(--ink-soft);text-align:center;margin-top:9px}
+.pipefig.missing{border:1.5px dashed var(--accent-line);border-radius:16px;background:var(--accent-bg);min-height:180px;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center}
+.pipefig.missing img,.pipefig.missing figcaption{display:none}
+.pipefig.missing::after{content:"Add curation-pipeline.png next to index.html";font-weight:600;color:var(--accent-dark);font-size:13px}
+
+/* ---------- equation card ---------- */
+.mathcard{border:1px solid var(--line);border-radius:14px;background:#fff;padding:2px 26px;margin:22px 0 10px}
+.mrow{position:relative;text-align:center;padding:22px 46px}
+.mlabel{display:block;margin-bottom:9px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.meq{display:block;overflow-x:auto;overflow-y:hidden;color:var(--ink);font-size:16.5px}
+.meq mjx-container{margin:0!important}
+.eqnum{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:var(--ink-soft);font-size:14px;font-variant-numeric:tabular-nums}
+.mrule{height:1px;background:var(--line)}
+@media(max-width:620px){.mrow{padding:18px 6px}.eqnum{position:static;display:block;transform:none;margin-top:8px}}
+
+/* ---------- PKR eval example ---------- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.checklist{list-style:none;padding:0;margin:14px 0 0}
+.checklist li{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:9px;margin-bottom:7px;font-size:14px;border:1px solid var(--line)}
+.checklist li .u{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;flex:none;padding:2px 7px;border-radius:6px;color:#fff}
+.checklist li.p{background:var(--p-bg);border-color:#bfe0f2}
+.checklist li.p .u{background:var(--p)}
+.checklist li.k{background:var(--k-bg);border-color:#c3e6bd}
+.checklist li.k .u{background:var(--k)}
+.checklist li.r{background:var(--r-bg);border-color:#ddccf9}
+.checklist li.r .u{background:var(--r)}
+
+.tracebox{border:1px solid var(--line);border-radius:14px;overflow:hidden;height:100%}
+.tracebox .th{display:flex;align-items:center;gap:9px;padding:12px 15px;border-bottom:1px solid var(--line);font-weight:700;font-size:14.5px}
+.tracebox.ours .th{background:var(--p-bg)}
+.tracebox.base .th{background:#f3f0f7}
+.tracebox .verdict{margin-left:auto;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:6px}
+.tracebox.ours .verdict{background:var(--p);color:#fff}
+.tracebox.base .verdict{background:#c96a6a;color:#fff}
+.tracebox .tb{padding:15px;font-size:14px;line-height:1.7}
+.tracebox .tb mark{padding:1px 3px;border-radius:4px;font-weight:600;box-shadow:inset 0 -2px 0 rgba(0,0,0,.06)}
+mark.mp{background:#b5dff5;color:#135680}   /* perception – cerulean */
+mark.mk{background:#b7e3a6;color:#2c6e2e}   /* knowledge  – green  */
+mark.mr{background:#d9c4fb;color:#5326b0}   /* rationale  – violet */
+.scorebar{display:flex;gap:6px;padding:11px 15px;border-top:1px solid var(--line);flex-wrap:wrap}
+.sb{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:6px}
+.sb.ok{background:var(--p-bg);color:var(--p-ink)}
+.sb.no{background:#fbe4e4;color:#a53b3b}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;margin-top:22px;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{background:var(--bg-soft);font-weight:700;font-size:12.5px;color:var(--ink-soft);letter-spacing:.02em}
+tbody tr:last-child td{border-bottom:none}
+tr.ours td{background:var(--p-bg);font-weight:600}
+tr.ours td:first-child{color:var(--accent)}
+td.best{font-weight:700;color:var(--accent)}
+.gain{font-size:12px;font-weight:700;color:#fff;background:var(--p);padding:1px 7px;border-radius:5px;margin-left:6px}
+caption{caption-side:bottom;text-align:left;font-size:12.5px;color:var(--ink-soft);padding:12px 4px 0}
+
+/* ---------- code ---------- */
+.code{background:var(--code-bg);border-radius:14px;overflow:hidden;margin-top:18px;border:1px solid #2a2352}
+.code .ch{display:flex;align-items:center;gap:8px;padding:9px 15px;border-bottom:1px solid #2a2352;background:#100d26}
+.code .ch .d{width:11px;height:11px;border-radius:50%}
+.code .ch .fn{margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#9c92d6}
+.code pre{margin:0;padding:16px 18px;overflow-x:auto}
+.code code{font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:var(--code-ink);white-space:pre}
+.tok-c{color:#746ca6}   /* comment */
+.tok-k{color:#f0a868}   /* keyword */
+.tok-s{color:#93c9ff}   /* string  */
+.tok-f{color:#7fc7e0}
+.tok-n{color:#c8a6f5}   /* number/name */
+.codecols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.codecols{grid-template-columns:1fr}}
+
+/* ---------- cite ---------- */
+.cite{background:var(--code-bg);color:#ddd6f3;border-radius:14px;padding:18px 20px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;position:relative}
+.cite .cp{position:absolute;top:12px;right:12px;background:#2a2352;border:none;color:#ddd6f3;
+  font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:'Inter',sans-serif}
+.cite .cp:hover{background:#39316b}
+
+/* ---------- footer ---------- */
+footer{padding:38px 0 60px;color:var(--ink-soft);font-size:13.5px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;justify-content:space-between}
+
+.callout{border:1px solid var(--accent-line);background:var(--accent-bg);border-radius:14px;padding:16px 20px;margin-top:22px;font-size:15px}
+.callout b{color:var(--accent)}
+.note{font-size:13px;color:var(--ink-soft);margin-top:10px;font-style:italic}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="brand">Open<b>Med</b>Reason</span>
+    <a class="link" href="#data">Data</a>
+    <a class="link" href="#pkr">PKR&nbsp;Eval</a>
+    <a class="link" href="#results">Results</a>
+    <a class="link" href="#code">Code</a>
+    <a class="link" href="#cite">Cite</a>
+    <a class="link" href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">🤗&nbsp;Dataset</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge">● Open dataset · benchmark · model</span>
+    <h1 class="title">OpenMedReason</h1>
+    <p class="subtitle">Scientific reasoning supervision for medical vision–language models</p>
+
+    <div class="authors">
+      Negin Baghbanzadeh<sup>1,2</sup> · Pritam Sarkar<sup>2,3</sup> · Michael Colacci<sup>4,5</sup> ·
+      Abeer Badawi<sup>1,2</sup> · Adibvafa Fallahpour<sup>2,4,6,7</sup> · Arash Afkanpour<sup>2</sup> ·
+      Leonid Sigal<sup>2,3</sup> · Ali Etemad<sup>8</sup> · Elham Dolatabadi<sup>1,2</sup>
+    </div>
+    <div class="affil">
+      <sup>1</sup>York University &nbsp; <sup>2</sup>Vector Institute &nbsp; <sup>3</sup>University of British Columbia &nbsp;
+      <sup>4</sup>University of Toronto &nbsp; <sup>5</sup>Unity Health Toronto / St. Michael's Hospital &nbsp;
+      <sup>6</sup>University Health Network &nbsp; <sup>7</sup>Arc Institute &nbsp; <sup>8</sup>Queen's University
+    </div>
+
+    <div class="btns">
+      <a class="btn primary" href="https://arxiv.org/abs/2606.12169" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
+        Paper (arXiv)
+      </a>
+      <a class="btn" href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">🤗 Dataset</a>
+      <a class="btn" href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+        Code
+      </a>
+      <a class="btn" href="#pkr">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+        PKR benchmark
+      </a>
+    </div>
+
+    <div class="contribs">
+      <div class="contrib">
+        <span class="ctag c-p">Dataset</span>
+        <div class="ct-t">OpenMedReason</div>
+        <div class="ct-d">196K medical reasoning traces grounded in real, human-authored biomedical articles, not synthetic chains of thought.</div>
+      </div>
+      <div class="contrib">
+        <span class="ctag c-k">Benchmark</span>
+        <div class="ct-t">OpenMedReason-Bench</div>
+        <div class="ct-d">Scores reasoning across perception, medical knowledge, and rationale, going beyond final-answer accuracy.</div>
+      </div>
+      <div class="contrib">
+        <span class="ctag c-r">Evidence</span>
+        <div class="ct-t">+20% accuracy</div>
+        <div class="ct-d">Added as reasoning supervision to a 7B model; its traces beat the base model in 86.1% of comparisons.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ABSTRACT -->
+<section id="abstract">
+  <div class="wrap">
+    <p class="eyebrow">Abstract</p>
+    <h2 class="sec">Grounded medical reasoning, not just the right answer.</h2>
+    <p class="lead">
+      Medical vision–language models are usually judged only on whether their final answer is correct.
+      <b>OpenMedReason</b> is an open set of <b>196K</b> medical image–question–answer instances whose reasoning
+      traces are grounded in real, human-authored biomedical articles rather than synthetic chains of thought,
+      keeping the reasoning close to genuine clinical evidence instead of purely a model's priors. We pair it with
+      <b>OpenMedReason-Bench</b>, a
+      benchmark that scores a model's reasoning along three axes:
+      <span style="color:var(--p);font-weight:600">perception</span>,
+      <span style="color:var(--k);font-weight:600">medical knowledge</span>, and
+      <span style="color:var(--r);font-weight:600">rationale</span>.
+    </p>
+    <div class="callout">
+      Added as reasoning supervision to a 7B model, OpenMedReason improves average VQA accuracy by <b>20%</b> and
+      its reasoning traces are preferred over the base model's in <b>86.1%</b> of pairwise comparisons.
+    </div>
+  </div>
+</section>
+
+<!-- DATA CREATION -->
+<section id="data">
+  <div class="wrap">
+    <p class="eyebrow">How the data is built</p>
+    <h2 class="sec">The OpenMedReason curation pipeline</h2>
+    <p class="lead">Three stages turn raw biomedical figures into leak-free clinical questions with verified,
+      source-grounded reasoning traces: filter what's usable, construct the question, then build and check the trace.</p>
+
+    <!-- three-stage curation pipeline (your figure) -->
+    <figure class="pipefig">
+      <img src="curation-pipeline.png"
+           alt="OpenMedReason curation pipeline: Multi-Level Quality Filtering, Question Construction, and Obtaining Reasoning Trace"
+           onerror="this.closest('.pipefig').classList.add('missing')">
+      <figcaption>The three-stage OpenMedReason curation pipeline: quality filtering → question construction → reasoning-trace generation &amp; verification.</figcaption>
+    </figure>
+
+    <div class="pdiv"></div>
+    <h3 style="font-size:21px;margin:30px 0 12px">A worked example: one instance, end to end</h3>
+
+    <div class="legend" aria-hidden="true">
+      <span class="chip p"><span class="dot"></span>Perception: image evidence</span>
+      <span class="chip k"><span class="dot"></span>Medical knowledge: clinical facts</span>
+      <span class="chip r"><span class="dot"></span>Rationale: inference to the answer</span>
+    </div>
+
+    <div class="pipe">
+
+      <!-- Step 1: source -->
+      <div class="pstep">
+      <div class="card">
+        <div class="card-h"><span class="stepnum">1</span>
+          <div class="card-ht"><span class="t">Source figure + context</span><span class="hsub">We begin with a real published figure and the case text written around it.</span></div>
+          <span class="tag">Open-PMC-18M</span></div>
+        <div class="card-b">
+          <div class="scan">
+            <figure class="ctwrap">
+              <img class="ctimg" src="pancreas-ct.png"
+                   alt="Axial enhanced-contrast abdominal CT showing a large solid–cystic mass in the tail of the pancreas"
+                   onerror="this.closest('.ctwrap').classList.add('missing')">
+              <figcaption>Enhanced CT · axial abdomen</figcaption>
+            </figure>
+            <div>
+              <p class="ctx" style="margin-top:0"><b>Caption.</b> Enhanced CT shows a cystic lesion in the tail of the pancreas.</p>
+              <p class="ctx" style="margin-bottom:0"><b>Context.</b>
+                <span class="hl age">A 63-year-old woman</span> was admitted with a
+                <span class="hl sym">one-week history of nausea and vomiting after meals</span>.
+                Enhanced-contrast CT revealed a
+                <span class="hl perc">mass with solid and cystic components in the tail of the pancreas</span>.
+                <span class="hl lab">CA19-9 was increased to 222 U/ml</span> (ref 0–27).
+                Because a <span class="hl dx">malignant pancreatic tumor was suspected</span>, the patient underwent a
+                <span class="hl tx">distal pancreatectomy and splenectomy</span>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Step 2: task assignment -->
+      <div class="pstep">
+      <div class="card">
+        <div class="card-h"><span class="stepnum">2</span>
+          <div class="card-ht"><span class="t">Clinical-task assignment</span><span class="hsub">A model reads the case and keeps the clinical questions the text can genuinely answer.</span></div>
+          <span class="tag">gpt-5-mini</span></div>
+        <div class="card-b">
+          <div class="tasktags">
+            <span class="ttag dx">Diagnosis <span style="opacity:.6">← "malignant tumor … suspected"</span></span>
+            <span class="ttag tx">Next-step treatment <span style="opacity:.6">← "distal pancreatectomy + splenectomy"</span></span>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Step 3: question -->
+      <div class="pstep">
+      <div class="card mcq">
+        <div class="card-h"><span class="stepnum">3</span>
+          <div class="card-ht"><span class="t">Constrained question generation</span><span class="hsub">The case becomes a board-style question that turns on reading the scan.</span></div>
+          <span class="tag">USMLE-style · leak-free</span></div>
+        <div class="card-b">
+          <p class="stem">A 63-year-old woman has 1 week of postprandial nausea and vomiting.
+            Her CA19-9 level is 222 U/mL. <b>Given the CT image, what is the most appropriate next step in management?</b></p>
+          <div class="opts">
+            <div class="opt"><span class="k">A</span><span>EUS-FNA with cyst fluid analysis</span></div>
+            <div class="opt"><span class="k">B</span><span>Percutaneous cyst drainage</span></div>
+            <div class="opt correct"><span class="k">C</span><span>Distal pancreatectomy and splenectomy</span><span class="badge-ok">answer</span></div>
+            <div class="opt"><span class="k">D</span><span>Observation with interval imaging</span></div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <!-- Step 4: reasoning trace -->
+      <div class="pstep">
+      <div class="card">
+        <div class="card-h"><span class="stepnum">4</span>
+          <div class="card-ht"><span class="t">Source-grounded reasoning trace</span><span class="hsub">The answer is explained as a short path from what the image shows to the clinical decision.</span></div>
+          <span class="tag">draft → refine → verify</span></div>
+        <div class="card-b trace">
+          <div class="seg p"><span class="lab">Perception · image evidence</span>
+            The enhanced-contrast CT shows a mass with <b>solid and cystic components in the tail of the pancreas</b>,
+            consistent with a pancreatic tail mass.</div>
+          <div class="seg k"><span class="lab">Medical knowledge · clinical context</span>
+            A 63-year-old woman with postprandial nausea/vomiting and a <b>CA19-9 of 222 U/mL</b> raises concern for a
+            <b>malignant pancreatic tumor</b> rather than an incidental cyst.</div>
+          <div class="seg r"><span class="lab">Rationale · inference to answer</span>
+            Observation or drainage would not address a suspicious solid-cystic mass, and systemic chemotherapy is not
+            first-line without evidence of unresectable disease. The appropriate next step is
+            <b>distal pancreatectomy and splenectomy → C</b>.</div>
+        </div>
+      </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PKR EVAL -->
+<section id="pkr">
+  <div class="wrap">
+    <p class="eyebrow">The PKR benchmark</p>
+    <h2 class="sec">Scoring <em>how</em> a model reasons, not just its final letter</h2>
+    <p class="lead">OpenMedReason-Bench converts each reference trace into a checklist of atomic
+      <span style="color:var(--p);font-weight:600">P</span>erception /
+      <span style="color:var(--k);font-weight:600">K</span>nowledge /
+      <span style="color:var(--r);font-weight:600">R</span>ationale units. A candidate trace is probed twice per unit:
+      <b>presence</b> (did it raise the topic?) and <b>correctness</b> (did it state it accurately?).</p>
+
+    <div class="mathcard">
+      <div class="mrow">
+        <span class="mlabel">Per-axis score</span>
+        <span class="meq">\[ \operatorname{Score}_a \;=\; \operatorname{Presence}_a \,\times\, \operatorname{Correctness}_a \]</span>
+        <span class="eqnum">(1)</span>
+      </div>
+      <div class="mrule"></div>
+      <div class="mrow">
+        <span class="mlabel">Trace score</span>
+        <span class="meq">\[ \operatorname{TraceScore} \;=\; \frac{1}{2}\!\!\sum_{a\,\in\,\{\mathrm{P},\,\mathrm{K},\,\mathrm{R}\}}\!\! \operatorname{Presence}_a \cdot \operatorname{Correctness}_a \]</span>
+        <span class="eqnum">(2)</span>
+      </div>
+    </div>
+    <p class="muted" style="font-size:14px">Presence lives in [0,1] over all units; correctness is measured only over units the model actually engaged with, so omissions and misstatements are penalized separately.</p>
+
+    <h3 style="font-size:20px;margin:34px 0 4px">A worked example</h3>
+    <p class="muted" style="margin-top:0">Case: a 3D pelvic reconstruction. <b>Question:</b> are the findings normal or abnormal? <b>Answer:</b> B (Abnormal).</p>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-h"><span class="t">Reference checklist: 6 unit questions</span><span class="tag">auto-generated</span></div>
+      <div class="card-b">
+        <ul class="checklist">
+          <li class="p"><span class="u">P1</span>Does the response discuss bony fragments in the left hemipelvis?</li>
+          <li class="p"><span class="u">P2</span>Does it discuss bony discontinuity around the left acetabular / innominate region?</li>
+          <li class="p"><span class="u">P3</span>Does it discuss the right hemipelvis appearance?</li>
+          <li class="k"><span class="u">K1</span>Does it discuss how a normal pelvic 3D reconstruction appears?</li>
+          <li class="r"><span class="u">R1</span>Does it link displaced left fragments to incompatibility with a normal appearance?</li>
+          <li class="r"><span class="u">R2</span>Does it conclude that the pelvic findings are abnormal?</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="tracebox ours">
+        <div class="th">OpenMedReason (ours)<span class="verdict">✓ correct</span></div>
+        <div class="tb">
+          The bones appear <mark class="mp">fragmented and displaced</mark> with irregular edges and
+          <mark class="mp">loss of normal cortical continuity</mark>. These features
+          <mark class="mr">clearly deviate from normal pelvic anatomy</mark>, where bones should be intact and aligned.
+          <mark class="mk">Extensive fractures</mark> strongly suggest an abnormal finding,
+          <mark class="mr">therefore the answer indicates abnormality</mark>.
+        </div>
+        <div class="scorebar">
+          <span class="sb ok">P1 ✓</span><span class="sb ok">P2 ✓</span><span class="sb ok">K1 ✓</span>
+          <span class="sb ok">R1 ✓</span><span class="sb ok">R2 ✓</span>
+        </div>
+      </div>
+
+      <div class="tracebox base">
+        <div class="th">Qwen2.5-VL-7B (base)<span class="verdict">✗ wrong</span></div>
+        <div class="tb">
+          The image depicts a pelvic radiograph with region labels. Without any
+          <mark class="mp">notable deformities, fractures</mark> or clear signs of pathology,
+          the image does not show obvious abnormalities.
+          <mark class="mr">In the absence of additional information, it appears within normal variation.</mark>
+        </div>
+        <div class="scorebar">
+          <span class="sb no">P1 ✗ missed</span><span class="sb no">P2 ✗ missed</span>
+          <span class="sb no">R1 ✗ wrong</span><span class="sb no">R2 ✗ wrong</span>
+        </div>
+      </div>
+    </div>
+    <p class="note">Same task, same final format, but PKR exposes that the base model never surfaced the fracture evidence, so its "normal" verdict is unsupported.</p>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results">
+  <div class="wrap">
+    <p class="eyebrow">Results</p>
+    <h2 class="sec">Gains show up on every axis, not one</h2>
+
+    <div class="callout" style="margin-top:16px">
+      <b>Training setup.</b> OpenMedReason is used as an add-on, not a standalone dataset. Its source-grounded
+      reasoning traces are combined with our full mix of existing medical VQA data, and that combined set
+      post-trains a Qwen2.5-VL-7B backbone, first with SFT and then with GRPO. Because the model is never trained
+      on OpenMedReason alone, the gains below reflect what the added reasoning supervision contributes on top of
+      standard data.
+    </div>
+
+    <h3 style="font-size:19px;margin:26px 0 0">VQA benchmarks · accuracy (%)</h3>
+    <div class="tablewrap">
+      <table>
+        <caption>Comparable-scale medical LVLMs. Our model = Qwen2.5-VL-7B, SFT + GRPO on our medical VQA mix augmented with OpenMedReason.</caption>
+        <thead>
+          <tr><th>Model</th><th>OMR-Bench</th><th>SLAKE</th><th>VQA-RAD</th><th>PathVQA</th><th>PMC</th><th>JAMA</th><th>Avg</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>MedVL-Thinker 7B</td><td>52.03</td><td>75.00</td><td>70.02</td><td>63.10</td><td>53.31</td><td>38.20</td><td>53.64</td></tr>
+          <tr><td>QoQ-Med-VL 7B</td><td>47.86</td><td>75.85</td><td>73.21</td><td>64.12</td><td>51.39</td><td>38.09</td><td>53.13</td></tr>
+          <tr><td>Qwen2.5-VL-7B (base)</td><td>47.11</td><td>62.26</td><td>67.13</td><td>63.88</td><td>49.60</td><td>35.34</td><td>49.71</td></tr>
+          <tr class="ours"><td>+ OpenMedReason</td><td class="best">78.51</td><td class="best">85.10</td><td>72.51</td><td class="best">64.10</td><td class="best">55.20</td><td class="best">39.97</td><td class="best">60.04 <span class="gain">+20%</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="font-size:19px;margin:34px 0 0">Capability-decomposed trace scores (OMR-Bench)</h3>
+    <div class="tablewrap">
+      <table>
+        <caption>Per-axis score = Presence × Correctness. Trace = mean of the three. Source-grounded supervision lifts <em>presence</em> most.</caption>
+        <thead>
+          <tr><th>Model</th><th><span style="color:var(--p)">Perception</span></th><th><span style="color:var(--k)">Med. Knowledge</span></th><th><span style="color:var(--r)">Rationale</span></th><th>Trace</th><th>Answer Acc.</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>gpt-5-mini</td><td>61.9</td><td>70.8</td><td>80.2</td><td>70.9</td><td>67.7</td></tr>
+          <tr><td>gemini-3-flash</td><td>64.6</td><td>69.6</td><td>77.3</td><td>70.5</td><td>72.0</td></tr>
+          <tr><td>Qwen2.5-VL-7B (base)</td><td>34.3</td><td>34.5</td><td>43.5</td><td>37.4</td><td>47.1</td></tr>
+          <tr class="ours"><td>+ OpenMedReason</td><td class="best">65.2</td><td class="best">85.0</td><td class="best">83.1</td><td class="best">77.8</td><td class="best">78.5</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:14.5px">Vs. the same backbone before post-training, <b>presence</b> improves by <b>+29 to +42 points</b> across the three axes: the model learns <em>which</em> visual and clinical cues matter, then GRPO sharpens correctness.</p>
+  </div>
+</section>
+
+<!-- CODE -->
+<section id="code">
+  <div class="wrap">
+    <p class="eyebrow">Get started</p>
+    <h2 class="sec">Two snippets to reproduce the core loop</h2>
+    <div class="codecols">
+      <div class="code">
+        <div class="ch"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#a78bfa"></span><span class="fn">load_dataset.py</span></div>
+<pre><code><span class="tok-c"># Load OpenMedReason from the Hub</span>
+<span class="tok-k">from</span> datasets <span class="tok-k">import</span> load_dataset
+
+ds = load_dataset(<span class="tok-s">"neginb/OpenMedReason"</span>)
+ex = ds[<span class="tok-s">"test"</span>][<span class="tok-n">0</span>]
+
+<span class="tok-c"># image · question · options · answer · trace</span>
+print(ex[<span class="tok-s">"question"</span>])
+print(ex[<span class="tok-s">"answer"</span>])
+print(ex[<span class="tok-s">"reasoning_trace"</span>])</code></pre>
+      </div>
+
+      <div class="code">
+        <div class="ch"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#a78bfa"></span><span class="fn">pkr_score.py</span></div>
+<pre><code><span class="tok-c"># PKR trace score = ½ Σ presence·correct</span>
+<span class="tok-k">def</span> <span class="tok-n">trace_score</span>(units):
+    axes = [<span class="tok-s">"perception"</span>,
+            <span class="tok-s">"knowledge"</span>,
+            <span class="tok-s">"rationale"</span>]
+    s = <span class="tok-n">0.0</span>
+    <span class="tok-k">for</span> a <span class="tok-k">in</span> axes:
+        U = [u <span class="tok-k">for</span> u <span class="tok-k">in</span> units <span class="tok-k">if</span> u.axis == a]
+        pres = mean(u.presence/<span class="tok-n">2</span> <span class="tok-k">for</span> u <span class="tok-k">in</span> U)
+        seen = [u <span class="tok-k">for</span> u <span class="tok-k">in</span> U <span class="tok-k">if</span> u.presence >= <span class="tok-n">1</span>]
+        corr = mean(u.correct == <span class="tok-n">1</span> <span class="tok-k">for</span> u <span class="tok-k">in</span> seen)
+        s += pres * corr
+    <span class="tok-k">return</span> <span class="tok-n">0.5</span> * s</code></pre>
+      </div>
+    </div>
+    <p class="note">Presence pᵢ ∈ {0,1,2}, correctness cᵢ ∈ {−1,0,+1}; correctness is scored only over present units.</p>
+  </div>
+</section>
+
+<!-- CITE -->
+<section id="cite">
+  <div class="wrap">
+    <p class="eyebrow">Citation</p>
+    <h2 class="sec">Cite OpenMedReason</h2>
+    <div class="cite">
+      <button class="cp" onclick="copyCite(this)">Copy</button>
+<pre id="bib" style="margin:0;white-space:pre-wrap;font-family:inherit">@article{baghbanzadeh2026openmedreason,
+  title   = {OpenMedReason: Scientific Reasoning Supervision for
+             Medical Vision--Language Models},
+  author  = {Baghbanzadeh, Negin and Sarkar, Pritam and Colacci, Michael
+             and Badawi, Abeer and Fallahpour, Adibvafa and Afkanpour, Arash
+             and Sigal, Leonid and Etemad, Ali and Dolatabadi, Elham},
+  journal = {arXiv preprint arXiv:2606.12169},
+  year    = {2026}
+}</pre>
+    </div>
+    <p class="muted" style="margin-top:18px">
+      Correspondence: <a href="mailto:neginb@yorku.ca">neginb@yorku.ca</a> ·
+      Dataset & code: <a href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">huggingface.co/datasets/neginb/OpenMedReason</a>
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>OpenMedReason · York University · Vector Institute · 2026</span>
+    <span>Reasoning grounded in scientific evidence: open dataset, benchmark & model.</span>
+  </div>
+</footer>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  chtml: { scale: 1.02 },
+  options: { renderActions: { addMenu: [] } }
+};
+function copyCite(btn){
+  const t = document.getElementById('bib').innerText;
+  navigator.clipboard.writeText(t).then(()=>{
+    const o = btn.textContent; btn.textContent = 'Copied ✓';
+    setTimeout(()=>btn.textContent = o, 1600);
+  });
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js" id="MathJax-script" async></script>
+</body>
+</html>
