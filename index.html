@@ -95,7 +95,7 @@ h1.title{font-size:clamp(30px,5vw,50px);margin:20px 0 6px;letter-spacing:-.02em}
 .ct-d{font-size:13.5px;color:var(--ink-soft);line-height:1.5}
 
 /* ---------- sections ---------- */
-section{padding:56px 0;border-bottom:1px solid var(--line)}
+section{padding:56px 0;border-bottom:1px solid var(--line);scroll-margin-top:60px}
 .eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
 h2.sec{font-size:clamp(24px,3.4vw,33px);margin:0 0 8px;letter-spacing:-.015em}
 .lead{color:var(--ink-soft);font-size:19.5px;max-width:82ch;margin:0 0 8px}
@@ -416,12 +416,12 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;justify
 <nav>
   <div class="wrap">
     <span class="brand">Open<b>Med</b>Reason</span>
+    <a class="link" href="#explore">Explore</a>
     <a class="link" href="#data">Data</a>
     <a class="link" href="#pkr">PKR&nbsp;Eval</a>
     <a class="link" href="#results">Results</a>
     <a class="link" href="#code">Code</a>
     <a class="link" href="#cite">Cite</a>
-    <a class="link" href="#explore">Explore</a>
     <a class="link" href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">🤗&nbsp;Dataset</a>
   </div>
 </nav>
@@ -459,6 +459,10 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;justify
       <a class="btn" href="#pkr">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
         PKR benchmark
+      </a>
+      <a class="btn" href="#explore">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Explore examples
       </a>
     </div>
 
@@ -504,6 +508,72 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;justify
     </div>
   </div>
 </section>
+
+<!-- DATA EXPLORER -->
+<section id="explore">
+  <div class="wrap">
+    <p class="eyebrow">Explore the data</p>
+    <h2 class="sec">Browse real examples without leaving this page</h2>
+    <p class="lead">A hand-picked slice of the Hugging Face release, embedded here so you can get a feel for the data
+      before pulling the full 150K-row dataset. Pick an imaging modality or a clinical-task category, try the question,
+      then reveal the answer and the source-grounded trace. Benchmark (test-split) examples come with their
+      <span style="color:var(--p);font-weight:600">P</span>/<span style="color:var(--k);font-weight:600">K</span>/<span style="color:var(--r);font-weight:600">R</span>
+      checklist and a live scorer that shows exactly how OpenMedReason-Bench grades a trace.</p>
+
+    <div class="xtabs" role="tablist" aria-label="Explorer views">
+      <button class="xtab" role="tab" data-tab="mod" aria-selected="true">By imaging modality</button>
+      <button class="xtab" role="tab" data-tab="task" aria-selected="false">By clinical task</button>
+      <button class="xtab" role="tab" data-tab="test" aria-selected="false">Benchmark &amp; Evaluation</button>
+    </div>
+
+    <div class="xpanel on" id="xp-mod">
+      <p class="xhint">One training example per primary modality (radiology, visible-light photography, microscopy). Modality labels were assigned by hand for this demo; the release itself stores image · question · reasoning · answer.</p>
+      <div class="xchips" id="xc-mod"></div>
+    </div>
+    <div class="xpanel" id="xp-task">
+      <p class="xhint">One training example for each of the 19 clinical-task categories, grouped by task family (Table 7 in the paper). Short stems are image-only; long stems add non-visual clinical context.</p>
+      <div id="xc-task"></div>
+    </div>
+    <div class="xpanel" id="xp-test">
+      <p class="xhint">Held-out OpenMedReason-Bench (test split) rows. Each carries a reference trace plus a checklist of atomic unit questions per axis. Toggle presence / correctness on any unit to see how the axis scores and trace score respond.</p>
+      <div class="xchips" id="xc-test"></div>
+    </div>
+
+    <div class="xview" id="xview">
+      <div class="ximg"><img id="xim" alt=""><span class="xcap" id="xcap"></span></div>
+      <div class="xbody">
+        <div class="xmeta" id="xmeta"></div>
+        <p class="xstem" id="xstem"></p>
+        <div class="xopts" id="xopts"></div>
+        <div class="xactions">
+          <button class="xbtn" id="xreveal">Reveal answer</button>
+          <button class="xbtn" id="xtoggle">Show reasoning trace</button>
+          <a class="xbtn" id="xhf" href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">Open row on 🤗</a>
+        </div>
+        <div class="xtrace" id="xtrace" hidden></div>
+      </div>
+    </div>
+
+    <div class="xrub" id="xrub" hidden>
+      <div class="rh">
+        <span class="t">PKR checklist for this example</span>
+        <button class="xbtn" id="xreset">Reset: reference trace (all present, all correct)</button>
+        <button class="xbtn" id="xsim">Simulate a weak trace (drop supporting units)</button>
+      </div>
+      <div class="rb">
+        <div class="rgrid" id="rgrid"></div>
+        <div class="rtotal" id="rtotal"></div>
+        <p class="rhow">Each unit gets a presence label <code>p ∈ {0,1,2}</code> (absent · vague · clearly asserted) and a correctness label
+          <code>c ∈ {−1,0,+1}</code> (wrong · n/a · correct). Per axis, <code>Presence = mean(p/2)</code> over all units and
+          <code>Correctness = |{p≥1 ∧ c=+1}| / |{p≥1}|</code> over the units the trace actually engaged with. The axis score is
+          their product and the trace score averages the three axes, so omissions and misstatements are penalized separately.</p>
+      </div>
+    </div>
+
+    <p class="note">Want everything? <code style="font-family:'JetBrains Mono',monospace;font-size:12.5px">load_dataset("neginb/OpenMedReason")</code> gives you 150K training rows and the 1.15K-row test split with rubrics (see <a href="#code">Get started</a>).</p>
+  </div>
+</section>
+<div class="xlight" id="xlight"><img id="xlightim" alt=""></div>
 
 <!-- DATA CREATION -->
 <section id="data">
@@ -813,72 +883,6 @@ print(ex[<span class="tok-s">"reasoning_trace"</span>])</code></pre>
     </p>
   </div>
 </section>
-
-<!-- DATA EXPLORER -->
-<section id="explore">
-  <div class="wrap">
-    <p class="eyebrow">Explore the data</p>
-    <h2 class="sec">Browse real examples without leaving this page</h2>
-    <p class="lead">A hand-picked slice of the Hugging Face release, embedded here so you can get a feel for the data
-      before pulling the full 150K-row dataset. Pick an imaging modality or a clinical-task category, try the question,
-      then reveal the answer and the source-grounded trace. Test-split examples come with their
-      <span style="color:var(--p);font-weight:600">P</span>/<span style="color:var(--k);font-weight:600">K</span>/<span style="color:var(--r);font-weight:600">R</span>
-      checklist and a live scorer that shows exactly how OpenMedReason-Bench grades a trace.</p>
-
-    <div class="xtabs" role="tablist" aria-label="Explorer views">
-      <button class="xtab" role="tab" data-tab="mod" aria-selected="true">By imaging modality</button>
-      <button class="xtab" role="tab" data-tab="task" aria-selected="false">By clinical task</button>
-      <button class="xtab" role="tab" data-tab="test" aria-selected="false">Test split &amp; trace evaluation</button>
-    </div>
-
-    <div class="xpanel on" id="xp-mod">
-      <p class="xhint">One training example per primary modality (radiology, visible-light photography, microscopy). Modality labels were assigned by hand for this demo; the release itself stores image · question · reasoning · answer.</p>
-      <div class="xchips" id="xc-mod"></div>
-    </div>
-    <div class="xpanel" id="xp-task">
-      <p class="xhint">One training example for each of the 19 clinical-task categories, grouped by task family (Table 7 in the paper). Short stems are image-only; long stems add non-visual clinical context.</p>
-      <div id="xc-task"></div>
-    </div>
-    <div class="xpanel" id="xp-test">
-      <p class="xhint">Held-out OpenMedReason-Bench rows. Each carries a reference trace plus a checklist of atomic unit questions per axis. Toggle presence / correctness on any unit to see how the axis scores and trace score respond.</p>
-      <div class="xchips" id="xc-test"></div>
-    </div>
-
-    <div class="xview" id="xview">
-      <div class="ximg"><img id="xim" alt=""><span class="xcap" id="xcap"></span></div>
-      <div class="xbody">
-        <div class="xmeta" id="xmeta"></div>
-        <p class="xstem" id="xstem"></p>
-        <div class="xopts" id="xopts"></div>
-        <div class="xactions">
-          <button class="xbtn" id="xreveal">Reveal answer</button>
-          <button class="xbtn" id="xtoggle">Show reasoning trace</button>
-          <a class="xbtn" id="xhf" href="https://huggingface.co/datasets/neginb/OpenMedReason" target="_blank" rel="noopener">Open row on 🤗</a>
-        </div>
-        <div class="xtrace" id="xtrace" hidden></div>
-      </div>
-    </div>
-
-    <div class="xrub" id="xrub" hidden>
-      <div class="rh">
-        <span class="t">PKR checklist for this example</span>
-        <button class="xbtn" id="xreset">Reset: reference trace (all present, all correct)</button>
-        <button class="xbtn" id="xsim">Simulate a weak trace (drop supporting units)</button>
-      </div>
-      <div class="rb">
-        <div class="rgrid" id="rgrid"></div>
-        <div class="rtotal" id="rtotal"></div>
-        <p class="rhow">Each unit gets a presence label <code>p ∈ {0,1,2}</code> (absent · vague · clearly asserted) and a correctness label
-          <code>c ∈ {−1,0,+1}</code> (wrong · n/a · correct). Per axis, <code>Presence = mean(p/2)</code> over all units and
-          <code>Correctness = |{p≥1 ∧ c=+1}| / |{p≥1}|</code> over the units the trace actually engaged with. The axis score is
-          their product and the trace score averages the three axes, so omissions and misstatements are penalized separately.</p>
-      </div>
-    </div>
-
-    <p class="note">Want everything? <code style="font-family:'JetBrains Mono',monospace;font-size:12.5px">load_dataset("neginb/OpenMedReason")</code> gives you 150K training rows and the 1.15K-row test split with rubrics (see <a href="#code">Get started</a>).</p>
-  </div>
-</section>
-<div class="xlight" id="xlight"><img id="xlightim" alt=""></div>
 
 <footer>
   <div class="wrap">
